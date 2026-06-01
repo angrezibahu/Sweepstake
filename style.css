@@ -1092,6 +1092,49 @@ footer .small {
     .flag-hoist.half-mast { top: 130px; }
 }
 
+/* ---- Click-to-celebrate affordances ---- */
+.tap-hint {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    font-style: italic;
+    margin-top: 0.4rem;
+}
+
+.bracket-team.is-clickable,
+.fx-side.is-clickable {
+    cursor: pointer;
+}
+
+.bracket-team.is-clickable {
+    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.bracket-team.is-clickable:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+}
+
+.bracket-team.is-clickable:focus-visible,
+.fx-side.is-clickable:focus-visible {
+    outline: 2px solid var(--gold);
+    outline-offset: 2px;
+}
+
+.fx-side.is-clickable {
+    border-radius: 8px;
+    padding: 0.2rem 0.4rem;
+    margin: -0.2rem -0.4rem;
+    transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.fx-side.is-clickable:hover {
+    background: rgba(255,215,0,0.08);
+}
+
+.fx-side.is-clickable:hover .fx-team-name:not(.eliminated) {
+    color: var(--gold);
+}
+
 /* ---- Utility ---- */
 .hidden {
     display: none !important;

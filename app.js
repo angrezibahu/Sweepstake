@@ -21,7 +21,40 @@ document.addEventListener("DOMContentLoaded", async () => {
     renderBracket();
     renderFixtures();
     setupAdmin();
+    setupTeamClicks();
 });
+
+// Delegated click: anywhere a team name is rendered with [data-team-click],
+// tapping it replays the right animation for that team's current state.
+function setupTeamClicks() {
+    const handler = (e) => {
+        const el = e.target.closest("[data-team-click]");
+        if (!el) return;
+        if (document.querySelector(".anim-overlay")) return;  // one at a time
+        e.preventDefault();
+        playTeamStatus(el.dataset.teamClick);
+    };
+    document.addEventListener("click", handler);
+    document.addEventListener("keydown", (e) => {
+        if (e.key !== "Enter" && e.key !== " ") return;
+        const el = e.target.closest("[data-team-click]");
+        if (!el) return;
+        e.preventDefault();
+        if (document.querySelector(".anim-overlay")) return;
+        playTeamStatus(el.dataset.teamClick);
+    });
+}
+
+function playTeamStatus(name) {
+    const team = findTeam(name);
+    if (!team) return;
+    if (isEliminated(name)) {
+        playEliminationAnimation(team);
+        return;
+    }
+    const stage = getStage(name);
+    playAdvanceAnimation(team, "groups", stage, { review: true });
+}
 
 // ---- Effective team state: auto results (LIVE), with admin overrides on top ----
 function isEliminated(name) {
@@ -110,7 +143,8 @@ function renderBracket() {
         const stage = getStage(team.name);
 
         const card = document.createElement("div");
-        card.className = `bracket-team ${eliminated ? 'eliminated' : 'alive'}`;
+        card.className = `bracket-team ${eliminated ? 'eliminated' : 'alive'} is-clickable`;
+        card.dataset.teamClick = team.name;
         card.innerHTML = `
             <span class="team-flag">${team.flag}</span>
             <div class="bracket-team-info">
@@ -193,12 +227,13 @@ function fixtureSide(match, side) {
     if (name) {
         const owner = state.assignments[name];
         return {
+            name,
             html: `<span class="fx-flag">${teamFlag(name)}</span>
                    <span class="fx-team-name${isEliminated(name) ? ' eliminated' : ''}">${escapeHtml(name)}</span>
                    ${owner ? `<span class="fx-owner">${escapeHtml(owner)}</span>` : ""}`,
         };
     }
-    return { html: `<span class="fx-team-name tbd">${escapeHtml(placeholderLabel(ref))}</span>` };
+    return { name: null, html: `<span class="fx-team-name tbd">${escapeHtml(placeholderLabel(ref))}</span>` };
 }
 
 const STAGE_LABEL_LONG = {
@@ -255,13 +290,20 @@ function renderFixtures() {
                 : due ? "Awaiting result"
                 : `${m.ukTime} BST`;
 
+            const sideAttrs = (s, sideName) => {
+                const cls = `fx-side ${sideName}${s.name ? ' is-clickable' : ''}`;
+                const extra = s.name
+                    ? ` data-team-click="${escapeHtml(s.name)}" role="button" tabindex="0"`
+                    : '';
+                return `class="${cls}"${extra}`;
+            };
             html += `
                 <div class="fx-match ${statusClass}">
                     <div class="fx-meta"><span class="fx-tag">${tag}</span><span class="fx-num">#${m.match}</span></div>
                     <div class="fx-teams">
-                        <div class="fx-side home">${home.html}</div>
+                        <div ${sideAttrs(home, "home")}>${home.html}</div>
                         <div class="fx-mid">${middle}</div>
-                        <div class="fx-side away">${away.html}</div>
+                        <div ${sideAttrs(away, "away")}>${away.html}</div>
                     </div>
                     <div class="fx-foot"><span class="fx-venue">${escapeHtml(m.venue)}</span><span class="fx-status">${note}</span></div>
                 </div>`;
@@ -622,18 +664,34 @@ const STAGE_PROGRESS = {
     winner: 6
 };
 
-function playAdvanceAnimation(team, fromStage, toStage) {
+function playAdvanceAnimation(team, fromStage, toStage, opts = {}) {
     if (!team) return Promise.resolve();
+    const review = !!opts.review;
     const owner = state.assignments[team.name];
     const fromIdx = STAGE_PROGRESS[fromStage] ?? 0;
     const toIdx = STAGE_PROGRESS[toStage] ?? 0;
-    if (toIdx <= fromIdx) return Promise.resolve();
+    // Real advancements need to actually move; review mode plays even at equal stages.
+    if (!review && toIdx <= fromIdx) return Promise.resolve();
 
     const stagesPath = ["Groups", "R32", "R16", "QF", "Semi", "Final", "🏆"];
     const totalSteps = 6;
     const startPct = (fromIdx / totalSteps) * 100;
     const endPct = (toIdx / totalSteps) * 100;
     const isWinner = toStage === "winner";
+    const stillInGroups = review && toIdx === 0;
+    const title = isWinner ? 'CHAMPIONS!'
+        : review
+            ? (stillInGroups ? 'Still flying the flag' : `Marching on!`)
+            : 'Through to the next round!';
+    const sub = isWinner ? `${escapeHtml(team.name)} lift the Jules Rimet!`
+        : review
+            ? (stillInGroups
+                ? `${escapeHtml(team.name)} are in the group stage`
+                : `${escapeHtml(team.name)} are currently in the ${getStageName(toStage)}`)
+            : `${escapeHtml(team.name)} march on to the ${getStageName(toStage)}`;
+    const ownerLine = owner
+        ? (isWinner || !review ? ` &mdash; well played ${escapeHtml(owner)}!` : ` &mdash; come on ${escapeHtml(owner)}!`)
+        : '';
 
     const overlay = document.createElement("div");
     overlay.className = "anim-overlay advance" + (isWinner ? " winner" : "");
@@ -661,11 +719,8 @@ function playAdvanceAnimation(team, fromStage, toStage) {
                 </div>
             </div>
             <div class="anim-caption">
-                <div class="anim-title">${isWinner ? 'CHAMPIONS!' : 'Through to the next round!'}</div>
-                <div class="anim-sub">
-                    ${escapeHtml(team.name)} ${isWinner ? 'lift the Jules Rimet!' : `march on to the ${getStageName(toStage)}`}
-                    ${owner ? ` &mdash; well played ${escapeHtml(owner)}!` : ''}
-                </div>
+                <div class="anim-title">${title}</div>
+                <div class="anim-sub">${sub}${ownerLine}</div>
             </div>
         </div>
         <button class="anim-close" aria-label="Close">&times;</button>
