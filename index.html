@@ -5,6 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>World Cup 2026 Sweepstake - Kewford South</title>
 
+    <!-- Favicon (football) -->
+    <link rel="icon" type="image/svg+xml" href="icon.svg">
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png">
+
+    <!-- PWA: installable to home screen -->
+    <link rel="manifest" href="manifest.webmanifest">
+    <meta name="theme-color" content="#1a5c32">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="WC26 Sweepstake">
+
     <!-- WhatsApp / Social sharing meta tags -->
     <meta property="og:title" content="World Cup 2026 Sweepstake!">
     <meta property="og:description" content="Grab a team for just £5! Prizes: 1st £50, 2nd £25, 3rd £15. The rest goes to the Kewford South Kitty. Are you in?">
@@ -199,5 +213,16 @@
 
 <script src="data.js"></script>
 <script src="app.js"></script>
+
+<!-- Register service worker so the app installs as a PWA and works offline -->
+<script>
+    if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+            navigator.serviceWorker.register("sw.js").catch((err) => {
+                console.warn("Service worker registration failed:", err);
+            });
+        });
+    }
+</script>
 </body>
 </html>
