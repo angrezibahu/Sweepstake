@@ -3,7 +3,7 @@
 // ============================================================
 // Just change the number below, then commit. The site rebuilds
 // automatically within ~30 seconds and every visitor sees it.
-const SPOTS_TAKEN = 15;
+const SPOTS_TAKEN = 19;
 // ============================================================
 
 
