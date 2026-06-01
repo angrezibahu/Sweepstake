@@ -1,0 +1,47 @@
+name: Update match results
+
+# Internal calendar for the World Cup 2026 tracker. Runs hourly during the
+# tournament window; the script only records a match once its result is "due"
+# (kickoff + 4h ≈ 2h play + 2h buffer for extra time / penalties), then commits
+# the updated results so GitHub Pages redeploys the site automatically.
+on:
+  schedule:
+    - cron: "15 * 11-30 6 *"   # hourly, 11-30 June
+    - cron: "15 * 1-19 7 *"    # hourly, 1-19 July
+  workflow_dispatch:            # allow a manual run any time
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-results
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Update results and derive tournament state
+        env:
+          FOOTBALL_DATA_API_TOKEN: ${{ secrets.FOOTBALL_DATA_API_TOKEN }}
+        run: python scripts/update_results.py
+
+      - name: Commit changes if any
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if [ -n "$(git status --porcelain results.json tracker-state.json)" ]; then
+            git add results.json tracker-state.json
+            git commit -m "Auto-update World Cup results"
+            git push
+          else
+            echo "No result changes."
+          fi

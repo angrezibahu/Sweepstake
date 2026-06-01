@@ -78,6 +78,29 @@ const WORLD_CUP_DATA = {
     }
 };
 
+// ---- Live tournament data (auto-updated in the repo by the results workflow) ----
+// These are loaded from committed JSON files so the public site always shows the
+// latest results without anyone having to touch a browser. See scripts/update_results.py.
+let SCHEDULE = [];                                              // schedule.json -> matches[]
+let RESULTS = {};                                              // results.json  -> results{}
+let LIVE = { eliminated: [], stages: {}, standings: {}, updatedAt: null }; // tracker-state.json
+
+async function loadLiveData() {
+    const bust = "?v=" + Date.now();   // avoid stale GitHub Pages caching
+    try {
+        const [sch, res, st] = await Promise.all([
+            fetch("schedule.json" + bust).then(r => r.ok ? r.json() : null).catch(() => null),
+            fetch("results.json" + bust).then(r => r.ok ? r.json() : null).catch(() => null),
+            fetch("tracker-state.json" + bust).then(r => r.ok ? r.json() : null).catch(() => null),
+        ]);
+        if (sch && sch.matches) SCHEDULE = sch.matches;
+        if (res && res.results) RESULTS = res.results;
+        if (st) LIVE = { eliminated: [], stages: {}, standings: {}, ...st };
+    } catch (e) {
+        console.warn("Live data unavailable:", e);
+    }
+}
+
 // ---- State management via localStorage ----
 const STORAGE_KEY = "kewford_sweepstake_2026";
 
@@ -97,8 +120,9 @@ function getDefaultState() {
     return {
         drawComplete: false,
         assignments: {},       // { "teamName": "ownerName" }
-        eliminated: [],        // ["teamName", ...]
+        eliminated: [],        // ["teamName", ...]  (legacy / unused once auto-results are live)
         stages: {},            // { "teamName": "groups" | "r32" | "r16" | "qf" | "sf" | "final" | "winner" }
+        overrides: {},         // admin manual corrections layered over the auto results: { teamName: { eliminated, stage } }
         spotsTaken: 15,        // number of sweepstake spots sold so far (out of 48)
         bankSortCode: "XX-XX-XX",
         bankAccountNo: "XXXXXXXX"
