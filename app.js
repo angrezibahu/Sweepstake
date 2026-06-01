@@ -38,7 +38,7 @@ function getStage(name) {
 
 // ---- Spots badge ----
 function renderSpotsBadge() {
-    const taken = Math.max(0, Math.min(state.spotsTaken ?? 15, TOTAL_SPOTS));
+    const taken = Math.max(0, Math.min(SPOTS_TAKEN, TOTAL_SPOTS));
     document.getElementById("spots-taken").textContent = taken;
     document.getElementById("spots-total").textContent = TOTAL_SPOTS;
 }
@@ -304,20 +304,6 @@ function setupAdmin() {
     });
     document.getElementById("import-file").addEventListener("change", importData);
 
-    // Spots-sold control
-    const spotsInput = document.getElementById("spots-taken-input");
-    spotsInput.value = state.spotsTaken ?? 15;
-    document.getElementById("update-spots-btn").addEventListener("click", () => {
-        const n = parseInt(spotsInput.value, 10);
-        if (Number.isNaN(n) || n < 0 || n > TOTAL_SPOTS) {
-            alert(`Enter a number between 0 and ${TOTAL_SPOTS}.`);
-            return;
-        }
-        state.spotsTaken = n;
-        saveState(state);
-        renderSpotsBadge();
-    });
-
     // Bracket admin
     populateTeamSelects();
     document.getElementById("eliminate-btn").addEventListener("click", eliminateTeam);
@@ -515,7 +501,7 @@ function setupShare() {
         const url = window.location.href.replace(/\?.*$/, '');
         const text = encodeURIComponent(
             "World Cup 2026 Sweepstake! Just £5 a team. " +
-            "Prizes: 1st £50, 2nd £30, 3rd £15. " +
+            "Prizes: 1st £50, 2nd £25, 3rd £15. " +
             "Rest goes to the Kewford South Kitty. Are you in? " +
             url
         );
