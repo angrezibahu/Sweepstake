@@ -1,3 +1,12 @@
+// ============================================================
+// SPOTS SOLD — edit this number to update the badge for everyone
+// ============================================================
+// Just change the number below, then commit. The site rebuilds
+// automatically within ~30 seconds and every visitor sees it.
+const SPOTS_TAKEN = 15;
+// ============================================================
+
+
 // World Cup 2026 - 48 Teams in 12 Groups
 // Update this file to manage the draw and tournament state
 
@@ -99,7 +108,6 @@ function getDefaultState() {
         assignments: {},       // { "teamName": "ownerName" }
         eliminated: [],        // ["teamName", ...]
         stages: {},            // { "teamName": "groups" | "r32" | "r16" | "qf" | "sf" | "final" | "winner" }
-        spotsTaken: 15,        // number of sweepstake spots sold so far (out of 48)
         bankSortCode: "XX-XX-XX",
         bankAccountNo: "XXXXXXXX"
     };
