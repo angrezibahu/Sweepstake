@@ -21,7 +21,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 // ---- Spots badge ----
 function renderSpotsBadge() {
-    const taken = Math.max(0, Math.min(state.spotsTaken ?? 13, TOTAL_SPOTS));
+    const taken = Math.max(0, Math.min(state.spotsTaken ?? 15, TOTAL_SPOTS));
     document.getElementById("spots-taken").textContent = taken;
     document.getElementById("spots-total").textContent = TOTAL_SPOTS;
 }
@@ -184,7 +184,7 @@ function setupAdmin() {
 
     // Spots-sold control
     const spotsInput = document.getElementById("spots-taken-input");
-    spotsInput.value = state.spotsTaken ?? 13;
+    spotsInput.value = state.spotsTaken ?? 15;
     document.getElementById("update-spots-btn").addEventListener("click", () => {
         const n = parseInt(spotsInput.value, 10);
         if (Number.isNaN(n) || n < 0 || n > TOTAL_SPOTS) {
