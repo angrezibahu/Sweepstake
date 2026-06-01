@@ -5,8 +5,11 @@
 let state = loadState();
 const isAdmin = new URLSearchParams(window.location.search).get("admin") === "true";
 
+const TOTAL_SPOTS = 48;
+
 // ---- Init ----
 document.addEventListener("DOMContentLoaded", () => {
+    renderSpotsBadge();
     renderGroups();
     renderBracket();
     setupTabs();
@@ -15,6 +18,13 @@ document.addEventListener("DOMContentLoaded", () => {
     updateDrawStatus();
     updateBankDetails();
 });
+
+// ---- Spots badge ----
+function renderSpotsBadge() {
+    const taken = Math.max(0, Math.min(state.spotsTaken ?? 13, TOTAL_SPOTS));
+    document.getElementById("spots-taken").textContent = taken;
+    document.getElementById("spots-total").textContent = TOTAL_SPOTS;
+}
 
 // ---- Tabs ----
 function setupTabs() {
@@ -150,8 +160,10 @@ function updateDrawStatus() {
 
 // ---- Bank details ----
 function updateBankDetails() {
-    document.getElementById("sort-code").textContent = state.bankSortCode;
-    document.getElementById("account-no").textContent = state.bankAccountNo;
+    const sortEl = document.getElementById("sort-code");
+    const accEl = document.getElementById("account-no");
+    if (sortEl) sortEl.textContent = state.bankSortCode;
+    if (accEl) accEl.textContent = state.bankAccountNo;
 }
 
 // ---- Admin ----
@@ -169,6 +181,20 @@ function setupAdmin() {
         document.getElementById("import-file").click();
     });
     document.getElementById("import-file").addEventListener("change", importData);
+
+    // Spots-sold control
+    const spotsInput = document.getElementById("spots-taken-input");
+    spotsInput.value = state.spotsTaken ?? 13;
+    document.getElementById("update-spots-btn").addEventListener("click", () => {
+        const n = parseInt(spotsInput.value, 10);
+        if (Number.isNaN(n) || n < 0 || n > TOTAL_SPOTS) {
+            alert(`Enter a number between 0 and ${TOTAL_SPOTS}.`);
+            return;
+        }
+        state.spotsTaken = n;
+        saveState(state);
+        renderSpotsBadge();
+    });
 
     // Bracket admin
     populateTeamSelects();

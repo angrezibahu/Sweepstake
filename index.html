@@ -24,6 +24,12 @@
 
 <!-- Hero Section -->
 <header class="hero">
+    <div class="spots-badge" id="spots-badge">
+        <div class="spots-badge-count">
+            <span id="spots-taken">13</span><span class="spots-badge-divider">/</span><span id="spots-total">48</span>
+        </div>
+        <div class="spots-badge-label">spots gone</div>
+    </div>
     <div class="hero-content">
         <div class="trophy">🏆</div>
         <h1>World Cup 2026</h1>
@@ -72,6 +78,12 @@
             <button id="export-btn" class="btn btn-export">Export Data</button>
             <button id="import-btn" class="btn btn-import">Import Data</button>
             <input type="file" id="import-file" accept=".json" class="hidden">
+        </div>
+        <div class="admin-spots">
+            <label for="spots-taken-input">Spots sold:</label>
+            <input type="number" id="spots-taken-input" min="0" max="48" step="1">
+            <span class="admin-spots-total">/ 48</span>
+            <button id="update-spots-btn" class="btn btn-advance">Update Count</button>
         </div>
         <div id="draw-animation" class="draw-animation hidden">
             <div class="slot-machine">
