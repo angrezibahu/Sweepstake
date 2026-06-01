@@ -160,8 +160,10 @@ function updateDrawStatus() {
 
 // ---- Bank details ----
 function updateBankDetails() {
-    document.getElementById("sort-code").textContent = state.bankSortCode;
-    document.getElementById("account-no").textContent = state.bankAccountNo;
+    const sortEl = document.getElementById("sort-code");
+    const accEl = document.getElementById("account-no");
+    if (sortEl) sortEl.textContent = state.bankSortCode;
+    if (accEl) accEl.textContent = state.bankAccountNo;
 }
 
 // ---- Admin ----
