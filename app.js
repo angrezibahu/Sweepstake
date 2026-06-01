@@ -3,21 +3,38 @@
 // ============================================
 
 let state = loadState();
+if (!state.overrides) state.overrides = {};   // migrate older saved state
 const isAdmin = new URLSearchParams(window.location.search).get("admin") === "true";
 
 const TOTAL_SPOTS = 48;
 
 // ---- Init ----
-document.addEventListener("DOMContentLoaded", () => {
-    renderSpotsBadge();
-    renderGroups();
-    renderBracket();
+document.addEventListener("DOMContentLoaded", async () => {
     setupTabs();
-    setupAdmin();
     setupShare();
+    renderSpotsBadge();
     updateDrawStatus();
     updateBankDetails();
+
+    await loadLiveData();          // pull committed schedule + auto-updated results
+    renderGroups();
+    renderBracket();
+    renderFixtures();
+    setupAdmin();
 });
+
+// ---- Effective team state: auto results (LIVE), with admin overrides on top ----
+function isEliminated(name) {
+    const o = state.overrides[name];
+    if (o && typeof o.eliminated === "boolean") return o.eliminated;
+    return (LIVE.eliminated || []).includes(name);
+}
+
+function getStage(name) {
+    const o = state.overrides[name];
+    if (o && o.stage) return o.stage;
+    return (LIVE.stages || {})[name] || "groups";
+}
 
 // ---- Spots badge ----
 function renderSpotsBadge() {
@@ -50,13 +67,13 @@ function renderGroups() {
         let teamsHTML = "";
         for (const team of teams) {
             const owner = state.assignments[team.name];
-            const isEliminated = state.eliminated.includes(team.name);
+            const eliminated = isEliminated(team.name);
             const ownerDisplay = owner
                 ? `<span class="team-owner">${escapeHtml(owner)}</span>`
                 : `<span class="team-owner unassigned">Available</span>`;
 
             teamsHTML += `
-                <div class="team-row${isEliminated ? ' eliminated' : ''}">
+                <div class="team-row${eliminated ? ' eliminated' : ''}">
                     <span class="team-flag">${team.flag}</span>
                     <span class="team-name">${team.name}</span>
                     ${state.drawComplete ? ownerDisplay : ''}
@@ -88,12 +105,12 @@ function renderBracket() {
     }
 
     for (const team of filteredTeams) {
-        const isEliminated = state.eliminated.includes(team.name);
+        const eliminated = isEliminated(team.name);
         const owner = state.assignments[team.name];
-        const stage = state.stages[team.name] || "groups";
+        const stage = getStage(team.name);
 
         const card = document.createElement("div");
-        card.className = `bracket-team ${isEliminated ? 'eliminated' : 'alive'}`;
+        card.className = `bracket-team ${eliminated ? 'eliminated' : 'alive'}`;
         card.innerHTML = `
             <span class="team-flag">${team.flag}</span>
             <div class="bracket-team-info">
@@ -121,9 +138,9 @@ function filterTeamsByStage(teams, viewStage) {
     if (viewStage === "groups") return teams;
 
     return teams.filter(t => {
-        const teamStage = state.stages[t.name] || "groups";
+        const teamStage = getStage(t.name);
         const teamIdx = stageOrder.indexOf(teamStage);
-        return teamIdx >= viewIdx || state.eliminated.includes(t.name);
+        return teamIdx >= viewIdx || isEliminated(t.name);
     });
 }
 
@@ -146,6 +163,111 @@ function getStageName(stage) {
         winner: "WINNER!"
     };
     return names[stage] || stage;
+}
+
+// ---- Fixtures / internal calendar ----
+function teamFlag(name) {
+    for (const team of getAllTeams()) {
+        if (team.name === name) return team.flag;
+    }
+    return "";
+}
+
+// Friendly label for an unresolved placeholder like "2A", "3A/B/C/D/F", "W73", "L101".
+function placeholderLabel(ref) {
+    let m;
+    if ((m = /^1([A-L])$/.exec(ref))) return `Winner Group ${m[1]}`;
+    if ((m = /^2([A-L])$/.exec(ref))) return `Runner-up Group ${m[1]}`;
+    if (/^3[A-L/]+$/.test(ref)) return "3rd place";
+    if ((m = /^W(\d+)$/.exec(ref))) return `Winner of #${m[1]}`;
+    if ((m = /^L(\d+)$/.exec(ref))) return `Loser of #${m[1]}`;
+    return ref;
+}
+
+function fixtureSide(match, side) {
+    const rec = RESULTS[String(match.match)] || {};
+    const resolved = rec[side];                    // filled in by the engine as rounds finish
+    const ref = side === "home" ? match.home : match.away;
+    const placeholder = side === "home" ? match.homePlaceholder : match.awayPlaceholder;
+    const name = resolved || (placeholder ? null : ref);
+    if (name) {
+        const owner = state.assignments[name];
+        return {
+            html: `<span class="fx-flag">${teamFlag(name)}</span>
+                   <span class="fx-team-name${isEliminated(name) ? ' eliminated' : ''}">${escapeHtml(name)}</span>
+                   ${owner ? `<span class="fx-owner">${escapeHtml(owner)}</span>` : ""}`,
+        };
+    }
+    return { html: `<span class="fx-team-name tbd">${escapeHtml(placeholderLabel(ref))}</span>` };
+}
+
+const STAGE_LABEL_LONG = {
+    group: "Group Stage", r32: "Round of 32", r16: "Round of 16",
+    qf: "Quarter-final", sf: "Semi-final", third: "Third-place play-off", final: "Final",
+};
+
+function renderFixtures() {
+    const view = document.getElementById("fixtures-view");
+    if (!view) return;
+
+    if (!SCHEDULE.length) {
+        view.innerHTML = `<div class="fx-empty">Fixture calendar unavailable.</div>`;
+        return;
+    }
+
+    if (LIVE.updatedAt) {
+        const updated = new Date(LIVE.updatedAt);
+        document.getElementById("fixtures-updated").textContent =
+            `Results auto-update ~2 hours after each match finishes. Last update: ${updated.toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}`;
+    }
+
+    const now = Date.now();
+    const byDate = {};
+    for (const m of SCHEDULE) {
+        (byDate[m.ukDate] = byDate[m.ukDate] || []).push(m);
+    }
+
+    let html = "";
+    for (const date of Object.keys(byDate).sort()) {
+        const d = new Date(date + "T12:00:00Z");
+        html += `<div class="fx-day">${d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}</div>`;
+        for (const m of byDate[date].sort((a, b) => a.match - b.match)) {
+            const rec = RESULTS[String(m.match)] || {};
+            const finished = rec.status === "FINISHED";
+            const due = now >= Date.parse(m.resultsDueUTC);
+            const home = fixtureSide(m, "home");
+            const away = fixtureSide(m, "away");
+
+            let middle, statusClass;
+            if (finished && rec.homeScore != null) {
+                middle = `<span class="fx-score">${rec.homeScore} – ${rec.awayScore}</span>`;
+                statusClass = "done";
+            } else if (due) {
+                middle = `<span class="fx-vs">v</span>`;
+                statusClass = "due";
+            } else {
+                middle = `<span class="fx-ko">${m.ukTime}</span>`;
+                statusClass = "upcoming";
+            }
+
+            const tag = m.stage === "group" ? `Group ${m.group}` : STAGE_LABEL_LONG[m.stage];
+            const note = finished ? "Full time"
+                : due ? "Awaiting result"
+                : `${m.ukTime} BST`;
+
+            html += `
+                <div class="fx-match ${statusClass}">
+                    <div class="fx-meta"><span class="fx-tag">${tag}</span><span class="fx-num">#${m.match}</span></div>
+                    <div class="fx-teams">
+                        <div class="fx-side home">${home.html}</div>
+                        <div class="fx-mid">${middle}</div>
+                        <div class="fx-side away">${away.html}</div>
+                    </div>
+                    <div class="fx-foot"><span class="fx-venue">${escapeHtml(m.venue)}</span><span class="fx-status">${note}</span></div>
+                </div>`;
+        }
+    }
+    view.innerHTML = html;
 }
 
 // ---- Draw Status ----
@@ -326,16 +448,23 @@ function populateTeamSelects() {
     });
 }
 
+// Admin actions write to the overrides layer, which takes precedence over the
+// auto-updated results (so the organiser can correct a wrong/late feed by hand).
+function setOverride(name, patch) {
+    state.overrides[name] = { ...(state.overrides[name] || {}), ...patch };
+    saveState(state);
+}
+
 function eliminateTeam() {
     const name = document.getElementById("eliminate-team").value;
     if (!name) return;
-    if (!state.eliminated.includes(name)) {
-        state.eliminated.push(name);
-        saveState(state);
+    if (!isEliminated(name)) {
+        setOverride(name, { eliminated: true });
         const team = findTeam(name);
         playEliminationAnimation(team).then(() => {
             renderGroups();
             renderBracket();
+            renderFixtures();
         });
     }
 }
@@ -343,23 +472,22 @@ function eliminateTeam() {
 function reinstateTeam() {
     const name = document.getElementById("eliminate-team").value;
     if (!name) return;
-    state.eliminated = state.eliminated.filter(t => t !== name);
-    saveState(state);
+    setOverride(name, { eliminated: false });
     renderGroups();
     renderBracket();
+    renderFixtures();
 }
 
 function advanceTeam() {
     const name = document.getElementById("set-stage-team").value;
     const stage = document.getElementById("set-stage-to").value;
     if (!name) return;
-    const previousStage = state.stages[name] || "groups";
-    state.stages[name] = stage;
-    state.eliminated = state.eliminated.filter(t => t !== name);
-    saveState(state);
+    const previousStage = getStage(name);
+    setOverride(name, { stage, eliminated: false });
     const team = findTeam(name);
     playAdvanceAnimation(team, previousStage, stage).then(() => {
         renderBracket();
+        renderFixtures();
     });
 }
 

@@ -48,6 +48,7 @@
 <nav class="tabs" id="tabs">
     <button class="tab active" data-tab="teams">Teams & Draw</button>
     <button class="tab" data-tab="bracket">Tournament Tracker</button>
+    <button class="tab" data-tab="fixtures">Fixtures & Results</button>
     <button class="tab" data-tab="pay">How to Pay</button>
 </nav>
 
@@ -138,6 +139,18 @@
             </select>
             <button id="advance-btn" class="btn btn-advance">Set Stage</button>
         </div>
+    </div>
+</section>
+
+<!-- Fixtures & Results Section -->
+<section id="fixtures" class="tab-content">
+    <div class="section-header">
+        <h2>Fixtures & Results</h2>
+        <p>All 104 matches in UK time. Results update themselves &mdash; no need to refresh by hand.</p>
+    </div>
+    <p class="fixtures-updated" id="fixtures-updated">Results auto-update ~2 hours after each match finishes.</p>
+    <div id="fixtures-view" class="fixtures-view">
+        <!-- Populated by JS -->
     </div>
 </section>
 
