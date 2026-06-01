@@ -320,8 +320,11 @@ function eliminateTeam() {
     if (!state.eliminated.includes(name)) {
         state.eliminated.push(name);
         saveState(state);
-        renderGroups();
-        renderBracket();
+        const team = findTeam(name);
+        playEliminationAnimation(team).then(() => {
+            renderGroups();
+            renderBracket();
+        });
     }
 }
 
@@ -338,10 +341,18 @@ function advanceTeam() {
     const name = document.getElementById("set-stage-team").value;
     const stage = document.getElementById("set-stage-to").value;
     if (!name) return;
+    const previousStage = state.stages[name] || "groups";
     state.stages[name] = stage;
     state.eliminated = state.eliminated.filter(t => t !== name);
     saveState(state);
-    renderBracket();
+    const team = findTeam(name);
+    playAdvanceAnimation(team, previousStage, stage).then(() => {
+        renderBracket();
+    });
+}
+
+function findTeam(name) {
+    return getAllTeams().find(t => t.name === name);
 }
 
 // ---- Share ----
@@ -411,6 +422,136 @@ function launchConfetti() {
         }
     }
     animate();
+}
+
+// ---- Elimination: half-mast flag ----
+function playEliminationAnimation(team) {
+    if (!team) return Promise.resolve();
+    const owner = state.assignments[team.name];
+    const overlay = document.createElement("div");
+    overlay.className = "anim-overlay elimination";
+    overlay.innerHTML = `
+        <div class="anim-stage">
+            <div class="flagpole">
+                <div class="pole-top"></div>
+                <div class="pole"></div>
+                <div class="pole-base"></div>
+                <div class="flag-hoist" id="elim-flag">
+                    <div class="flag-cloth">
+                        <span class="flag-emoji">${team.flag}</span>
+                        <span class="flag-name">${escapeHtml(team.name)}</span>
+                    </div>
+                </div>
+            </div>
+            <div class="anim-caption">
+                <div class="anim-title">Going Home</div>
+                <div class="anim-sub">${escapeHtml(team.name)} eliminated${owner ? ` &mdash; commiserations ${escapeHtml(owner)}` : ''}</div>
+            </div>
+        </div>
+        <button class="anim-close" aria-label="Close">&times;</button>
+    `;
+    document.body.appendChild(overlay);
+
+    const close = () => overlay.remove();
+    overlay.querySelector(".anim-close").addEventListener("click", close);
+    overlay.addEventListener("click", (e) => { if (e.target === overlay) close(); });
+
+    return new Promise(resolve => {
+        // Trigger the descent
+        requestAnimationFrame(() => {
+            overlay.classList.add("show");
+            setTimeout(() => {
+                overlay.querySelector("#elim-flag").classList.add("half-mast");
+            }, 600);
+        });
+        setTimeout(() => {
+            overlay.classList.add("fade-out");
+            setTimeout(() => { close(); resolve(); }, 500);
+        }, 4200);
+    });
+}
+
+// ---- Advancement: march toward the trophy ----
+const STAGE_PROGRESS = {
+    groups: 0,
+    r32: 1,
+    r16: 2,
+    qf: 3,
+    sf: 4,
+    final: 5,
+    winner: 6
+};
+
+function playAdvanceAnimation(team, fromStage, toStage) {
+    if (!team) return Promise.resolve();
+    const owner = state.assignments[team.name];
+    const fromIdx = STAGE_PROGRESS[fromStage] ?? 0;
+    const toIdx = STAGE_PROGRESS[toStage] ?? 0;
+    if (toIdx <= fromIdx) return Promise.resolve();
+
+    const stagesPath = ["Groups", "R32", "R16", "QF", "Semi", "Final", "🏆"];
+    const totalSteps = 6;
+    const startPct = (fromIdx / totalSteps) * 100;
+    const endPct = (toIdx / totalSteps) * 100;
+    const isWinner = toStage === "winner";
+
+    const overlay = document.createElement("div");
+    overlay.className = "anim-overlay advance" + (isWinner ? " winner" : "");
+    overlay.innerHTML = `
+        <div class="anim-stage advance-stage">
+            <div class="march-track">
+                <div class="march-pitch"></div>
+                <div class="march-checkpoints">
+                    ${stagesPath.map((s, i) => `
+                        <div class="checkpoint${i <= toIdx ? ' reached' : ''}${i === toIdx ? ' active' : ''}">
+                            <div class="checkpoint-dot"></div>
+                            <div class="checkpoint-label">${s}</div>
+                        </div>
+                    `).join("")}
+                </div>
+                <div class="trophy-target">
+                    <div class="trophy-glow"></div>
+                    <div class="trophy-icon">🏆</div>
+                </div>
+                <div class="march-lane">
+                    <div class="marcher" id="adv-marcher" style="--start: ${startPct}%; --end: ${endPct}%;">
+                        <div class="marcher-flag">${team.flag}</div>
+                        <div class="marcher-name">${escapeHtml(team.name)}</div>
+                    </div>
+                </div>
+            </div>
+            <div class="anim-caption">
+                <div class="anim-title">${isWinner ? 'CHAMPIONS!' : 'Through to the next round!'}</div>
+                <div class="anim-sub">
+                    ${escapeHtml(team.name)} ${isWinner ? 'lift the Jules Rimet!' : `march on to the ${getStageName(toStage)}`}
+                    ${owner ? ` &mdash; well played ${escapeHtml(owner)}!` : ''}
+                </div>
+            </div>
+        </div>
+        <button class="anim-close" aria-label="Close">&times;</button>
+    `;
+    document.body.appendChild(overlay);
+
+    const close = () => overlay.remove();
+    overlay.querySelector(".anim-close").addEventListener("click", close);
+    overlay.addEventListener("click", (e) => { if (e.target === overlay) close(); });
+
+    return new Promise(resolve => {
+        requestAnimationFrame(() => {
+            overlay.classList.add("show");
+            setTimeout(() => {
+                overlay.querySelector("#adv-marcher").classList.add("marching");
+            }, 400);
+            if (isWinner) {
+                setTimeout(() => launchConfetti(), 1800);
+            }
+        });
+        const duration = isWinner ? 5200 : 4200;
+        setTimeout(() => {
+            overlay.classList.add("fade-out");
+            setTimeout(() => { close(); resolve(); }, 500);
+        }, duration);
+    });
 }
 
 // ---- Helpers ----
