@@ -99,6 +99,7 @@ function getDefaultState() {
         assignments: {},       // { "teamName": "ownerName" }
         eliminated: [],        // ["teamName", ...]
         stages: {},            // { "teamName": "groups" | "r32" | "r16" | "qf" | "sf" | "final" | "winner" }
+        spotsTaken: 13,        // number of sweepstake spots sold so far (out of 48)
         bankSortCode: "XX-XX-XX",
         bankAccountNo: "XXXXXXXX"
     };

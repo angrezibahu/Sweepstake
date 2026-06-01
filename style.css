@@ -257,100 +257,69 @@ h1, h2, h3 {
     border: 1px solid rgba(76,175,80,0.3);
 }
 
-/* ---- Spots tracker ---- */
-.spots-tracker {
-    max-width: 560px;
-    margin: 0 auto 2.5rem;
-    background: var(--bg-card);
-    border-radius: 16px;
-    padding: 1.25rem 1.5rem 1.5rem;
-    border: 1px solid rgba(255,255,255,0.08);
+/* ---- Spots badge (hero corner) ---- */
+.spots-badge {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: rgba(0,0,0,0.35);
+    border: 2px solid var(--gold);
+    border-radius: 14px;
+    padding: 0.5rem 0.9rem;
+    text-align: center;
+    z-index: 2;
+    backdrop-filter: blur(4px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
 }
 
-.spots-tracker-header {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    margin-bottom: 1rem;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-}
-
-.spots-tracker-header h3 {
-    font-size: 1.6rem;
-    color: var(--gold);
-}
-
-.spots-count {
+.spots-badge-count {
     font-family: 'Bangers', cursive;
     font-size: 1.6rem;
-    letter-spacing: 2px;
+    line-height: 1;
+    letter-spacing: 1px;
+    color: var(--gold);
 }
 
-.spots-taken {
-    color: var(--green-light);
-}
-
-.spots-divider {
+.spots-badge-divider {
     color: var(--text-muted);
-    margin: 0 0.25rem;
+    margin: 0 0.15rem;
 }
 
-.spots-total {
+.spots-badge-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
     color: var(--text-secondary);
+    margin-top: 0.15rem;
 }
 
-.spots-board {
-    display: grid;
-    grid-template-columns: repeat(8, 1fr);
-    gap: 4px;
-    aspect-ratio: 8 / 6;
-    background: rgba(0,0,0,0.25);
-    padding: 6px;
-    border-radius: 10px;
-}
-
-.spot {
-    border-radius: 4px;
+.admin-spots {
     display: flex;
     align-items: center;
-    justify-content: center;
-    font-size: clamp(0.9rem, 2.5vw, 1.4rem);
-    transition: transform 0.2s;
-}
-
-.spot.light {
-    background: rgba(255,255,255,0.06);
-}
-
-.spot.dark {
-    background: rgba(255,255,255,0.02);
-}
-
-.spot.taken {
-    background: linear-gradient(135deg, var(--green-pitch), var(--green-light));
-    box-shadow: 0 0 8px rgba(76,175,80,0.4);
-    animation: spotPop 0.4s ease;
-}
-
-.spot.taken:hover {
-    transform: scale(1.1);
-}
-
-@keyframes spotPop {
-    0% { transform: scale(0.6); opacity: 0; }
-    100% { transform: scale(1); opacity: 1; }
-}
-
-.spots-remaining {
-    text-align: center;
-    color: var(--text-secondary);
+    gap: 0.5rem;
     margin-top: 1rem;
-    font-size: 0.95rem;
+    flex-wrap: wrap;
 }
 
-.spots-remaining strong {
-    color: var(--gold);
+.admin-spots label {
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+.admin-spots input[type="number"] {
+    width: 80px;
+    background: var(--bg-dark);
+    color: var(--text-primary);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 8px;
+    padding: 0.5rem;
+    font-family: 'Inter', sans-serif;
+    font-size: 1rem;
+}
+
+.admin-spots-total {
+    color: var(--text-muted);
+    font-weight: 600;
 }
 
 /* ---- Groups grid ---- */
@@ -816,6 +785,9 @@ footer .small {
 /* ---- Responsive ---- */
 @media (max-width: 600px) {
     .hero { padding: 2rem 1rem 1.5rem; }
+    .spots-badge { top: 0.5rem; right: 0.5rem; padding: 0.4rem 0.7rem; }
+    .spots-badge-count { font-size: 1.2rem; }
+    .spots-badge-label { font-size: 0.6rem; }
     .tab { padding: 0.75rem 0.75rem; font-size: 0.8rem; }
     .groups-grid { grid-template-columns: 1fr; }
     .bracket-view { grid-template-columns: 1fr; }
