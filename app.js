@@ -373,7 +373,7 @@ function setupShare() {
         const url = window.location.href.replace(/\?.*$/, '');
         const text = encodeURIComponent(
             "World Cup 2026 Sweepstake! Just £5 a team. " +
-            "Prizes: 1st £50, 2nd £30, 3rd £15. " +
+            "Prizes: 1st £50, 2nd £25, 3rd £15. " +
             "Rest goes to the Kewford South Kitty. Are you in? " +
             url
         );
