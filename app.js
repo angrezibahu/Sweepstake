@@ -5,8 +5,13 @@
 let state = loadState();
 const isAdmin = new URLSearchParams(window.location.search).get("admin") === "true";
 
+// Spots tracker config — update SPOTS_TAKEN as sales come in
+const TOTAL_SPOTS = 48;
+const SPOTS_TAKEN = 13;
+
 // ---- Init ----
 document.addEventListener("DOMContentLoaded", () => {
+    renderSpotsTracker();
     renderGroups();
     renderBracket();
     setupTabs();
@@ -15,6 +20,36 @@ document.addEventListener("DOMContentLoaded", () => {
     updateDrawStatus();
     updateBankDetails();
 });
+
+// ---- Spots tracker ----
+function renderSpotsTracker() {
+    const board = document.getElementById("spots-board");
+    if (!board) return;
+
+    const taken = Math.max(0, Math.min(SPOTS_TAKEN, TOTAL_SPOTS));
+    const COLS = 8;
+    board.innerHTML = "";
+
+    for (let i = 0; i < TOTAL_SPOTS; i++) {
+        const row = Math.floor(i / COLS);
+        const col = i % COLS;
+        const isLight = (row + col) % 2 === 0;
+        const isTaken = i < taken;
+        const spot = document.createElement("div");
+        spot.className = `spot ${isLight ? "light" : "dark"}${isTaken ? " taken" : ""}`;
+        spot.textContent = isTaken ? "⚽" : "";
+        spot.title = isTaken ? `Spot ${i + 1} — taken` : `Spot ${i + 1} — available`;
+        board.appendChild(spot);
+    }
+
+    document.getElementById("spots-taken").textContent = taken;
+    document.getElementById("spots-total").textContent = TOTAL_SPOTS;
+    const remaining = TOTAL_SPOTS - taken;
+    document.getElementById("spots-remaining").innerHTML =
+        remaining > 0
+            ? `<strong>${remaining}</strong> team${remaining === 1 ? "" : "s"} still up for grabs!`
+            : `🎉 <strong>Sold out!</strong>`;
+}
 
 // ---- Tabs ----
 function setupTabs() {
