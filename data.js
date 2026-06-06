@@ -1,14 +1,5 @@
-// ============================================================
-// SPOTS SOLD — edit this number to update the badge for everyone
-// ============================================================
-// Just change the number below, then commit. The site rebuilds
-// automatically within ~30 seconds and every visitor sees it.
-const SPOTS_TAKEN = 48;
-// ============================================================
-
-
 // World Cup 2026 - 48 Teams in 12 Groups
-// Update this file to manage the draw and tournament state
+// Assignments from the Kewford South draw
 
 const WORLD_CUP_DATA = {
     groups: {
@@ -20,7 +11,7 @@ const WORLD_CUP_DATA = {
         ],
         "B": [
             { name: "Canada", flag: "\u{1F1E8}\u{1F1E6}" },
-            { name: "Bosnia and Herzegovina", flag: "\u{1F1E7}\u{1F1E6}" },
+            { name: "Bosnia & Herzegovina", flag: "\u{1F1E7}\u{1F1E6}" },
             { name: "Qatar", flag: "\u{1F1F6}\u{1F1E6}" },
             { name: "Switzerland", flag: "\u{1F1E8}\u{1F1ED}" }
         ],
@@ -31,10 +22,10 @@ const WORLD_CUP_DATA = {
             { name: "Scotland", flag: "\u{1F3F4}\u{E0067}\u{E0062}\u{E0073}\u{E0063}\u{E0074}\u{E007F}" }
         ],
         "D": [
-            { name: "United States", flag: "\u{1F1FA}\u{1F1F8}" },
-            { name: "Australia", flag: "\u{1F1E6}\u{1F1FA}" },
+            { name: "USA", flag: "\u{1F1FA}\u{1F1F8}" },
             { name: "Paraguay", flag: "\u{1F1F5}\u{1F1FE}" },
-            { name: "Türkiye", flag: "\u{1F1F9}\u{1F1F7}" }
+            { name: "Australia", flag: "\u{1F1E6}\u{1F1FA}" },
+            { name: "Turkey", flag: "\u{1F1F9}\u{1F1F7}" }
         ],
         "E": [
             { name: "Germany", flag: "\u{1F1E9}\u{1F1EA}" },
@@ -51,7 +42,7 @@ const WORLD_CUP_DATA = {
         "G": [
             { name: "Belgium", flag: "\u{1F1E7}\u{1F1EA}" },
             { name: "Egypt", flag: "\u{1F1EA}\u{1F1EC}" },
-            { name: "IR Iran", flag: "\u{1F1EE}\u{1F1F7}" },
+            { name: "Iran", flag: "\u{1F1EE}\u{1F1F7}" },
             { name: "New Zealand", flag: "\u{1F1F3}\u{1F1FF}" }
         ],
         "H": [
@@ -87,28 +78,57 @@ const WORLD_CUP_DATA = {
     }
 };
 
-// ---- Live tournament data (auto-updated in the repo by the results workflow) ----
-// These are loaded from committed JSON files so the public site always shows the
-// latest results without anyone having to touch a browser. See scripts/update_results.py.
-let SCHEDULE = [];                                              // schedule.json -> matches[]
-let RESULTS = {};                                              // results.json  -> results{}
-let LIVE = { eliminated: [], stages: {}, standings: {}, updatedAt: null }; // tracker-state.json
-
-async function loadLiveData() {
-    const bust = "?v=" + Date.now();   // avoid stale GitHub Pages caching
-    try {
-        const [sch, res, st] = await Promise.all([
-            fetch("schedule.json" + bust).then(r => r.ok ? r.json() : null).catch(() => null),
-            fetch("results.json" + bust).then(r => r.ok ? r.json() : null).catch(() => null),
-            fetch("tracker-state.json" + bust).then(r => r.ok ? r.json() : null).catch(() => null),
-        ]);
-        if (sch && sch.matches) SCHEDULE = sch.matches;
-        if (res && res.results) RESULTS = res.results;
-        if (st) LIVE = { eliminated: [], stages: {}, standings: {}, ...st };
-    } catch (e) {
-        console.warn("Live data unavailable:", e);
-    }
-}
+// Hardcoded draw results so everyone sees the same assignments
+const DEFAULT_ASSIGNMENTS = {
+    "Mexico": "Alfie",
+    "South Africa": "Maureen",
+    "South Korea": "Kit",
+    "Czechia": "Laura H",
+    "Canada": "Charlotte",
+    "Bosnia & Herzegovina": "Alex",
+    "Qatar": "Maggie",
+    "Switzerland": "Jon",
+    "Brazil": "Liam",
+    "Morocco": "Jacob",
+    "Haiti": "Kim",
+    "Scotland": "George's bro",
+    "USA": "Cruz",
+    "Paraguay": "Jenny",
+    "Australia": "Felix",
+    "Turkey": "Finn",
+    "Germany": "Cruz",
+    "Curaçao": "Jay",
+    "Ivory Coast": "Rachel",
+    "Ecuador": "Jacob",
+    "Netherlands": "Felix",
+    "Japan": "Ella",
+    "Sweden": "Kushal",
+    "Tunisia": "Alan",
+    "Belgium": "Laura W",
+    "Egypt": "Steve",
+    "Iran": "Ryan",
+    "New Zealand": "Pippa",
+    "Spain": "Mason",
+    "Cape Verde": "Lizzie",
+    "Saudi Arabia": "Finn",
+    "Uruguay": "Davey",
+    "France": "George",
+    "Senegal": "Mart",
+    "Iraq": "Liam",
+    "Norway": "Alfie",
+    "Argentina": "Jay",
+    "Algeria": "Dylan",
+    "Austria": "Stacy",
+    "Jordan": "Sean",
+    "Portugal": "Rebecca",
+    "DR Congo": "Mya",
+    "Uzbekistan": "Vikki",
+    "Colombia": "Harry",
+    "England": "Erin",
+    "Croatia": "Harry",
+    "Ghana": "Mason",
+    "Panama": "Dylan"
+};
 
 // ---- State management via localStorage ----
 const STORAGE_KEY = "kewford_sweepstake_2026";
@@ -116,7 +136,12 @@ const STORAGE_KEY = "kewford_sweepstake_2026";
 function loadState() {
     try {
         const saved = localStorage.getItem(STORAGE_KEY);
-        if (saved) return JSON.parse(saved);
+        if (saved) {
+            const parsed = JSON.parse(saved);
+            parsed.assignments = DEFAULT_ASSIGNMENTS;
+            parsed.drawComplete = true;
+            return parsed;
+        }
     } catch (e) {}
     return getDefaultState();
 }
@@ -127,12 +152,9 @@ function saveState(state) {
 
 function getDefaultState() {
     return {
-        drawComplete: false,
-        assignments: {},       // { "teamName": "ownerName" }
-        eliminated: [],        // ["teamName", ...]  (legacy / unused once auto-results are live)
-        stages: {},            // { "teamName": "groups" | "r32" | "r16" | "qf" | "sf" | "final" | "winner" }
-        overrides: {},         // admin manual corrections layered over the auto results: { teamName: { eliminated, stage } }
-        bankSortCode: "XX-XX-XX",
-        bankAccountNo: "XXXXXXXX"
+        drawComplete: true,
+        assignments: DEFAULT_ASSIGNMENTS,
+        eliminated: [],
+        stages: {}
     };
 }
