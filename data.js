@@ -78,6 +78,9 @@ const WORLD_CUP_DATA = {
     }
 };
 
+// How many of the 48 spots have been claimed
+const SPOTS_TAKEN = 48;
+
 // Hardcoded draw results so everyone sees the same assignments
 const DEFAULT_ASSIGNMENTS = {
     "Mexico": "Alfie",
@@ -129,6 +132,30 @@ const DEFAULT_ASSIGNMENTS = {
     "Ghana": "Mason",
     "Panama": "Dylan"
 };
+
+// Schedule and results loaded from JSON files by loadLiveData()
+let SCHEDULE = [];
+let RESULTS = {};
+let LIVE = { eliminated: [], stages: {}, updatedAt: null };
+
+async function loadLiveData() {
+    try {
+        const [scheduleRes, resultsRes, trackerRes] = await Promise.all([
+            fetch("schedule.json").then(r => r.ok ? r.json() : []),
+            fetch("results.json").then(r => r.ok ? r.json() : {}),
+            fetch("tracker-state.json").then(r => r.ok ? r.json() : {})
+        ]);
+        SCHEDULE = scheduleRes;
+        RESULTS = resultsRes;
+        LIVE = {
+            eliminated: trackerRes.eliminated || [],
+            stages: trackerRes.stages || {},
+            updatedAt: trackerRes.updatedAt || null
+        };
+    } catch (e) {
+        console.warn("Could not load live data:", e);
+    }
+}
 
 // ---- State management via localStorage ----
 const STORAGE_KEY = "kewford_sweepstake_2026";
