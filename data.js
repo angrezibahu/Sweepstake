@@ -11,7 +11,7 @@ const WORLD_CUP_DATA = {
         ],
         "B": [
             { name: "Canada", flag: "\u{1F1E8}\u{1F1E6}" },
-            { name: "Bosnia & Herzegovina", flag: "\u{1F1E7}\u{1F1E6}" },
+            { name: "Bosnia and Herzegovina", flag: "\u{1F1E7}\u{1F1E6}" },
             { name: "Qatar", flag: "\u{1F1F6}\u{1F1E6}" },
             { name: "Switzerland", flag: "\u{1F1E8}\u{1F1ED}" }
         ],
@@ -22,10 +22,10 @@ const WORLD_CUP_DATA = {
             { name: "Scotland", flag: "\u{1F3F4}\u{E0067}\u{E0062}\u{E0073}\u{E0063}\u{E0074}\u{E007F}" }
         ],
         "D": [
-            { name: "USA", flag: "\u{1F1FA}\u{1F1F8}" },
+            { name: "United States", flag: "\u{1F1FA}\u{1F1F8}" },
             { name: "Paraguay", flag: "\u{1F1F5}\u{1F1FE}" },
             { name: "Australia", flag: "\u{1F1E6}\u{1F1FA}" },
-            { name: "Turkey", flag: "\u{1F1F9}\u{1F1F7}" }
+            { name: "Türkiye", flag: "\u{1F1F9}\u{1F1F7}" }
         ],
         "E": [
             { name: "Germany", flag: "\u{1F1E9}\u{1F1EA}" },
@@ -42,7 +42,7 @@ const WORLD_CUP_DATA = {
         "G": [
             { name: "Belgium", flag: "\u{1F1E7}\u{1F1EA}" },
             { name: "Egypt", flag: "\u{1F1EA}\u{1F1EC}" },
-            { name: "Iran", flag: "\u{1F1EE}\u{1F1F7}" },
+            { name: "IR Iran", flag: "\u{1F1EE}\u{1F1F7}" },
             { name: "New Zealand", flag: "\u{1F1F3}\u{1F1FF}" }
         ],
         "H": [
@@ -88,17 +88,17 @@ const DEFAULT_ASSIGNMENTS = {
     "South Korea": "Kit",
     "Czechia": "Laura H",
     "Canada": "Charlotte",
-    "Bosnia & Herzegovina": "Alex",
+    "Bosnia and Herzegovina": "Alex",
     "Qatar": "Maggie",
     "Switzerland": "Jon",
     "Brazil": "Liam",
     "Morocco": "Jacob",
     "Haiti": "Kim",
     "Scotland": "Oscar",
-    "USA": "Cruz",
+    "United States": "Cruz",
     "Paraguay": "Jenny",
     "Australia": "Felix",
-    "Turkey": "Finn",
+    "Türkiye": "Finn",
     "Germany": "Cruz",
     "Curaçao": "Jay",
     "Ivory Coast": "Rachel",
@@ -109,7 +109,7 @@ const DEFAULT_ASSIGNMENTS = {
     "Tunisia": "Alan",
     "Belgium": "Laura W",
     "Egypt": "Steve",
-    "Iran": "Ryan",
+    "IR Iran": "Ryan",
     "New Zealand": "Pippa",
     "Spain": "Mason",
     "Cape Verde": "Lizzie",
@@ -141,16 +141,16 @@ let LIVE = { eliminated: [], stages: {}, updatedAt: null };
 async function loadLiveData() {
     try {
         const [scheduleRes, resultsRes, trackerRes] = await Promise.all([
-            fetch("schedule.json").then(r => r.ok ? r.json() : []),
-            fetch("results.json").then(r => r.ok ? r.json() : {}),
-            fetch("tracker-state.json").then(r => r.ok ? r.json() : {})
+            fetch("schedule.json").then(r => r.ok ? r.json() : null),
+            fetch("results.json").then(r => r.ok ? r.json() : null),
+            fetch("tracker-state.json").then(r => r.ok ? r.json() : null)
         ]);
-        SCHEDULE = scheduleRes;
-        RESULTS = resultsRes;
+        SCHEDULE = (scheduleRes && scheduleRes.matches) || [];
+        RESULTS = (resultsRes && resultsRes.results) || {};
         LIVE = {
-            eliminated: trackerRes.eliminated || [],
-            stages: trackerRes.stages || {},
-            updatedAt: trackerRes.updatedAt || null
+            eliminated: (trackerRes && trackerRes.eliminated) || [],
+            stages: (trackerRes && trackerRes.stages) || {},
+            updatedAt: (trackerRes && trackerRes.updatedAt) || null
         };
     } catch (e) {
         console.warn("Could not load live data:", e);
