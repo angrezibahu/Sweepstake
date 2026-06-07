@@ -954,17 +954,20 @@ footer .small {
 .checkpoint.reached { opacity: 1; }
 
 .checkpoint-dot {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    background: rgba(255,255,255,0.25);
-    border: 2px solid rgba(255,255,255,0.4);
+    width: 18px;
+    height: 18px;
+    font-size: 16px;
+    line-height: 18px;
+    text-align: center;
+    filter: grayscale(1) opacity(0.6);
+}
+
+.checkpoint-dot::before {
+    content: "⚽";
 }
 
 .checkpoint.reached .checkpoint-dot {
-    background: var(--gold);
-    border-color: #fff;
-    box-shadow: 0 0 8px rgba(255,215,0,0.7);
+    filter: drop-shadow(0 0 6px rgba(255,215,0,0.8));
 }
 
 .checkpoint.active .checkpoint-dot {
