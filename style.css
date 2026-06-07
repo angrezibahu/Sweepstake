@@ -919,7 +919,6 @@ footer .small {
     border: 1px solid rgba(255,255,255,0.08);
     border-radius: 16px;
     padding: 1rem 1.5rem;
-    overflow: hidden;
 }
 
 .march-pitch {
@@ -929,6 +928,7 @@ footer .small {
         repeating-linear-gradient(90deg, transparent 0 40px, rgba(255,255,255,0.025) 40px 80px),
         linear-gradient(180deg, var(--green-dark), var(--green-pitch));
     opacity: 0.6;
+    border-radius: 16px;
 }
 
 .march-checkpoints {
