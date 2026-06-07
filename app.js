@@ -673,7 +673,7 @@ function playAdvanceAnimation(team, fromStage, toStage, opts = {}) {
     // Real advancements need to actually move; review mode plays even at equal stages.
     if (!review && toIdx <= fromIdx) return Promise.resolve();
 
-    const stagesPath = ["Groups", "R32", "R16", "QF", "Semi", "Final", "🏆"];
+    const stagesPath = ["Groups", "R32", "R16", "QF", "Semi", "Final", "🥅"];
     const totalSteps = 6;
     const startPct = (fromIdx / totalSteps) * 100;
     const endPct = (toIdx / totalSteps) * 100;
@@ -709,7 +709,7 @@ function playAdvanceAnimation(team, fromStage, toStage, opts = {}) {
                 </div>
                 <div class="trophy-target">
                     <div class="trophy-glow"></div>
-                    <div class="trophy-icon">🏆</div>
+                    <div class="trophy-icon">🥅</div>
                 </div>
                 <div class="march-lane">
                     <div class="marcher" id="adv-marcher" style="--start: ${startPct}%; --end: ${endPct}%;">
