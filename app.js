@@ -229,8 +229,10 @@ function fixtureSide(match, side) {
         return {
             name,
             html: `<span class="fx-flag">${teamFlag(name)}</span>
-                   <span class="fx-team-name${isEliminated(name) ? ' eliminated' : ''}">${escapeHtml(name)}</span>
-                   ${owner ? `<span class="fx-owner">${escapeHtml(owner)}</span>` : ""}`,
+                   <span class="fx-side-text">
+                       <span class="fx-team-name${isEliminated(name) ? ' eliminated' : ''}">${escapeHtml(name)}</span>
+                       ${owner ? `<span class="fx-owner">${escapeHtml(owner)}</span>` : ""}
+                   </span>`,
         };
     }
     return { name: null, html: `<span class="fx-team-name tbd">${escapeHtml(placeholderLabel(ref))}</span>` };
