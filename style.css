@@ -1232,13 +1232,20 @@ footer .small {
 }
 .fx-team-name.eliminated { color: var(--eliminated); text-decoration: line-through; opacity: 0.7; }
 .fx-team-name.tbd { color: var(--text-muted); font-weight: 500; font-style: italic; }
+.fx-side-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+.fx-side.away .fx-side-text { align-items: flex-end; }
 .fx-owner {
     font-size: 0.72rem;
-    color: var(--text-muted);
-    background: rgba(255, 255, 255, 0.05);
-    padding: 0.05rem 0.4rem;
-    border-radius: 999px;
-    flex-shrink: 0;
+    color: var(--gold);
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
 }
 .fx-mid { text-align: center; min-width: 56px; }
 .fx-score { font-size: 1.25rem; font-weight: 700; color: var(--gold); white-space: nowrap; }
@@ -1255,6 +1262,7 @@ footer .small {
 .fx-match.done .fx-status { color: var(--alive); }
 .fx-match.due .fx-status { color: var(--gold); }
 @media (max-width: 480px) {
-    .fx-owner { display: none; }
     .fx-flag { font-size: 1.1rem; }
+    .fx-team-name { font-size: 0.85rem; }
+    .fx-owner { font-size: 0.68rem; }
 }
