@@ -125,7 +125,9 @@ def fetch_api_matches():
     out = []
     for m in data.get("matches", []):
         ft = (m.get("score") or {}).get("fullTime") or {}
-        if ft.get("home") is None or ft.get("away") is None:
+        # require real integer scores so a malformed feed can't crash the run
+        # or write junk into results.json
+        if not isinstance(ft.get("home"), int) or not isinstance(ft.get("away"), int):
             continue
         out.append({
             "home": (m.get("homeTeam") or {}).get("name"),
@@ -168,15 +170,21 @@ def apply_results(schedule, results):
         home = rec.get("home")
         away = rec.get("away")
 
-        # 1) manual override wins, e.g. "2-1" (orientation = home-away of this match)
-        if no in manual and isinstance(manual[no], str) and "-" in manual[no]:
-            try:
-                hs, as_ = (int(x) for x in manual[no].split("-", 1))
-                _set_result(rec, hs, as_)
+        # 1) manual override wins, e.g. "2-1" (orientation = home-away of this
+        # match). For a knockout decided on penalties after a level score, name
+        # the side that progressed: "2-2:home" or "2-2:away".
+        if no in manual and isinstance(manual[no], str):
+            mm = re.match(r"^\s*(\d+)\s*-\s*(\d+)\s*(?::\s*(home|away|h|a)\s*)?$",
+                          manual[no], re.IGNORECASE)
+            if mm:
+                hs, as_ = int(mm.group(1)), int(mm.group(2))
+                decider = (mm.group(3) or "").lower()[:1]  # "h" / "a" / ""
+                api_winner = {"h": "HOME_TEAM", "a": "AWAY_TEAM"}.get(decider)
+                _set_result(rec, hs, as_, api_winner)
                 changed += 1
                 continue
-            except ValueError:
-                print(f"Bad manual result for match {no}: {manual[no]!r}")
+            print(f"Bad manual result for match {no}: {manual[no]!r} "
+                  f"(expected \"2-1\" or \"2-2:home\")")
 
         # 2) API (only once both teams are known, i.e. not still a placeholder)
         if home and away:
@@ -205,7 +213,10 @@ def _set_result(rec, home_score, away_score, api_winner=None, flip=False):
         # draw on the day -> knockout decided by ET/pens; trust the API's winner flag
         if api_winner in ("HOME_TEAM", "AWAY_TEAM"):
             home_is = (api_winner == "HOME_TEAM") ^ flip
-            rec["winner"] = rec.get("home") if home_is else rec.get("away")
+            # remember the side too, so the winner can still be filled in
+            # later if this match's teams aren't resolved yet
+            rec["winnerSide"] = "home" if home_is else "away"
+            rec["winner"] = rec.get(rec["winnerSide"])
         else:
             rec["winner"] = None  # genuine group-stage draw
 
@@ -371,6 +382,10 @@ def derive_state(schedule, results, prev):
                     progressed = True
                 elif rec["awayScore"] > rec["homeScore"]:
                     rec["winner"] = rec["away"]
+                    progressed = True
+                elif rec.get("winnerSide") in ("home", "away"):
+                    # level score decided on pens; the recorded side wins
+                    rec["winner"] = rec[rec["winnerSide"]]
                     progressed = True
             # mark stage reached + eliminate the loser of a finished tie
             if rec["status"] == "FINISHED" and rec.get("winner"):

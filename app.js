@@ -171,10 +171,12 @@ function filterTeamsByStage(teams, viewStage) {
 
     if (viewStage === "groups") return teams;
 
+    // Show teams that reached at least this stage - including ones knocked out
+    // here - but not teams that went home in an earlier round.
     return teams.filter(t => {
         const teamStage = getStage(t.name);
         const teamIdx = stageOrder.indexOf(teamStage);
-        return teamIdx >= viewIdx || isEliminated(t.name);
+        return teamIdx >= viewIdx;
     });
 }
 
@@ -458,7 +460,12 @@ function importData(e) {
     reader.onload = (ev) => {
         try {
             const data = JSON.parse(ev.target.result);
+            if (typeof data !== "object" || data === null || Array.isArray(data)) {
+                throw new Error("not an object");
+            }
             state = { ...getDefaultState(), ...data };
+            if (typeof state.overrides !== "object" || state.overrides === null) state.overrides = {};
+            if (typeof state.assignments !== "object" || state.assignments === null) state.assignments = {};
             saveState(state);
             renderGroups();
             renderBracket();
@@ -549,7 +556,7 @@ function setupShare() {
             "Rest goes to the Kewford South Kitty. Are you in? " +
             url
         );
-        window.open(`https://wa.me/?text=${text}`, "_blank");
+        window.open(`https://wa.me/?text=${text}`, "_blank", "noopener,noreferrer");
     });
 }
 
@@ -756,8 +763,13 @@ function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+// Escapes quotes too, so output is safe in attribute values as well as text.
 function escapeHtml(str) {
-    const div = document.createElement("div");
-    div.textContent = str;
-    return div.innerHTML;
+    return String(str ?? "").replace(/[&<>"']/g, (c) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
+    }[c]));
 }

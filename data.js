@@ -140,10 +140,13 @@ let LIVE = { eliminated: [], stages: {}, updatedAt: null };
 
 async function loadLiveData() {
     try {
+        // "?v=" busts the HTTP cache (GitHub Pages caches for ~10 min); the
+        // service worker keys its data cache on the path, ignoring the query.
+        const v = Date.now();
         const [scheduleRes, resultsRes, trackerRes] = await Promise.all([
-            fetch("schedule.json").then(r => r.ok ? r.json() : null),
-            fetch("results.json").then(r => r.ok ? r.json() : null),
-            fetch("tracker-state.json").then(r => r.ok ? r.json() : null)
+            fetch(`schedule.json?v=${v}`).then(r => r.ok ? r.json() : null),
+            fetch(`results.json?v=${v}`).then(r => r.ok ? r.json() : null),
+            fetch(`tracker-state.json?v=${v}`).then(r => r.ok ? r.json() : null)
         ]);
         SCHEDULE = (scheduleRes && scheduleRes.matches) || [];
         RESULTS = (resultsRes && resultsRes.results) || {};
@@ -182,6 +185,7 @@ function getDefaultState() {
         drawComplete: true,
         assignments: DEFAULT_ASSIGNMENTS,
         eliminated: [],
-        stages: {}
+        stages: {},
+        overrides: {}
     };
 }
