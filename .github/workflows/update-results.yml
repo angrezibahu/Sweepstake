@@ -41,6 +41,8 @@ jobs:
           if [ -n "$(git status --porcelain results.json tracker-state.json)" ]; then
             git add results.json tracker-state.json
             git commit -m "Auto-update World Cup results"
+            # main may have moved (e.g. a PR merged) since checkout; rebase first
+            git pull --rebase origin main
             git push
           else
             echo "No result changes."

@@ -11,7 +11,6 @@ const TOTAL_SPOTS = 48;
 // ---- Init ----
 document.addEventListener("DOMContentLoaded", async () => {
     setupTabs();
-    setupShare();
     renderSpotsBadge();
     updateDrawStatus();
     updateBankDetails();
@@ -171,10 +170,12 @@ function filterTeamsByStage(teams, viewStage) {
 
     if (viewStage === "groups") return teams;
 
+    // Show teams that reached at least this stage - including ones knocked out
+    // here - but not teams that went home in an earlier round.
     return teams.filter(t => {
         const teamStage = getStage(t.name);
         const teamIdx = stageOrder.indexOf(teamStage);
-        return teamIdx >= viewIdx || isEliminated(t.name);
+        return teamIdx >= viewIdx;
     });
 }
 
@@ -458,7 +459,12 @@ function importData(e) {
     reader.onload = (ev) => {
         try {
             const data = JSON.parse(ev.target.result);
+            if (typeof data !== "object" || data === null || Array.isArray(data)) {
+                throw new Error("not an object");
+            }
             state = { ...getDefaultState(), ...data };
+            if (typeof state.overrides !== "object" || state.overrides === null) state.overrides = {};
+            if (typeof state.assignments !== "object" || state.assignments === null) state.assignments = {};
             saveState(state);
             renderGroups();
             renderBracket();
@@ -537,20 +543,6 @@ function advanceTeam() {
 
 function findTeam(name) {
     return getAllTeams().find(t => t.name === name);
-}
-
-// ---- Share ----
-function setupShare() {
-    document.getElementById("share-btn").addEventListener("click", () => {
-        const url = window.location.href.replace(/\?.*$/, '');
-        const text = encodeURIComponent(
-            "World Cup 2026 Sweepstake! Just £5 a team. " +
-            "Prizes: 1st £50, 2nd £25, 3rd £15. " +
-            "Rest goes to the Kewford South Kitty. Are you in? " +
-            url
-        );
-        window.open(`https://wa.me/?text=${text}`, "_blank");
-    });
 }
 
 // ---- Confetti ----
@@ -756,8 +748,13 @@ function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+// Escapes quotes too, so output is safe in attribute values as well as text.
 function escapeHtml(str) {
-    const div = document.createElement("div");
-    div.textContent = str;
-    return div.innerHTML;
+    return String(str ?? "").replace(/[&<>"']/g, (c) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
+    }[c]));
 }

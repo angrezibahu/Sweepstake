@@ -54,13 +54,15 @@ score as `"home-away"` from the home team's perspective:
 ```json
 {
   "1": "2-1",
-  "73": "0-0"
+  "73": "0-0",
+  "85": "2-2:home"
 }
 ```
 
-(For a knockout that finished level after 90 mins, the API's winner flag decides
-who progresses; for a hand-entered knockout score, enter the score that reflects
-the actual aggregate/decisive result.)
+For a knockout that finished level after 90 mins, the API's winner flag decides
+who progresses. For a hand-entered knockout score that finished level, add
+`:home` or `:away` to name the side that won the shoot-out (orientation as in
+`schedule.json`), e.g. `"2-2:away"`.
 
 ## A note on tiebreakers
 
