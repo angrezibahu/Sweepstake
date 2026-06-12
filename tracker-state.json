@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-06-12T01:39:30Z",
+  "updatedAt": "2026-06-12T06:37:45Z",
   "source": "auto",
   "eliminated": [],
   "stages": {
@@ -68,25 +68,25 @@
       },
       {
         "team": "South Korea",
-        "played": 0,
-        "won": 0,
+        "played": 1,
+        "won": 1,
         "drawn": 0,
         "lost": 0,
-        "gf": 0,
-        "ga": 0,
-        "gd": 0,
-        "pts": 0,
+        "gf": 2,
+        "ga": 1,
+        "gd": 1,
+        "pts": 3,
         "rank": 2
       },
       {
         "team": "Czechia",
-        "played": 0,
+        "played": 1,
         "won": 0,
         "drawn": 0,
-        "lost": 0,
-        "gf": 0,
-        "ga": 0,
-        "gd": 0,
+        "lost": 1,
+        "gf": 1,
+        "ga": 2,
+        "gd": -1,
         "pts": 0,
         "rank": 3
       },
