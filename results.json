@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-06-12T01:39:30Z",
+  "updatedAt": "2026-06-12T06:37:45Z",
   "results": {
     "1": {
       "match": 1,
@@ -21,11 +21,11 @@
       "away": "Czechia",
       "homeRef": "South Korea",
       "awayRef": "Czechia",
-      "homeScore": null,
-      "awayScore": null,
-      "status": "SCHEDULED",
-      "winner": null,
-      "finishedAt": null
+      "homeScore": 2,
+      "awayScore": 1,
+      "status": "FINISHED",
+      "winner": "South Korea",
+      "finishedAt": "2026-06-12T06:37:45Z"
     },
     "3": {
       "match": 3,
