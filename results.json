@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-06-11T22:59:21Z",
+  "updatedAt": "2026-06-12T01:39:30Z",
   "results": {
     "1": {
       "match": 1,
@@ -8,11 +8,11 @@
       "away": "South Africa",
       "homeRef": "Mexico",
       "awayRef": "South Africa",
-      "homeScore": null,
-      "awayScore": null,
-      "status": "SCHEDULED",
-      "winner": null,
-      "finishedAt": null
+      "homeScore": 2,
+      "awayScore": 0,
+      "status": "FINISHED",
+      "winner": "Mexico",
+      "finishedAt": "2026-06-12T01:39:30Z"
     },
     "2": {
       "match": 2,
