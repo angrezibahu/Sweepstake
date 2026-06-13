@@ -9,9 +9,15 @@ derives the full tournament state - group standings, who qualifies, and the
 knockout bracket - into tracker-state.json, which the website reads to show
 eliminations and how far each team (and therefore each sweepstake entrant) got.
 
-Data source: football-data.org v4 (free tier). Set the FOOTBALL_DATA_API_TOKEN
-secret. A committed manual-results.json ({"<matchNo>": "2-1", ...}) always wins
-over the API, so results can be corrected or entered by hand if the feed is off.
+Primary data source: openfootball (github.com/openfootball/worldcup.json) - free,
+public-domain World Cup JSON served from raw.githubusercontent.com. No API key, no
+rate limits, no bot protection, so it works from any CI runner out of the box.
+
+Optional fallback: football-data.org v4 (free tier). It is only consulted when the
+FOOTBALL_DATA_API_TOKEN secret is set and openfootball is missing a result.
+
+A committed manual-results.json ({"<matchNo>": "2-1", ...}) always wins over every
+feed, so results can be corrected or entered by hand if a source is off.
 
 The script is deliberately fail-soft: any network/parse problem is logged and the
 run still exits 0 with whatever it could update, so a flaky feed never turns the
@@ -35,6 +41,12 @@ MANUAL = os.path.join(ROOT, "manual-results.json")
 API_TOKEN = os.environ.get("FOOTBALL_DATA_API_TOKEN", "").strip()
 API_COMP = os.environ.get("FOOTBALL_DATA_COMPETITION", "WC").strip()
 API_BASE = "https://api.football-data.org/v4"
+
+# Primary feed: openfootball public-domain JSON (no key, no rate limit).
+OPENFOOTBALL_URL = os.environ.get(
+    "OPENFOOTBALL_URL",
+    "https://raw.githubusercontent.com/openfootball/worldcup.json/master/2026/worldcup.json",
+).strip()
 
 # Map provider team names onto the canonical names used in data.js / schedule.json.
 # Keys are raw provider spellings; they are matched after normalisation (see
@@ -136,6 +148,55 @@ def canon(name, valid):
 # --------------------------------------------------------------------------
 # Fetching final scores
 # --------------------------------------------------------------------------
+def _fetch_json(url, headers=None):
+    req = urllib.request.Request(url, headers=headers or {})
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        return json.loads(resp.read().decode())
+
+
+def fetch_openfootball_matches():
+    """Return finished matches from the openfootball 2026 JSON, or [] on failure.
+
+    openfootball stores scores as score.ft (90'), score.et (after extra time,
+    cumulative) and score.p (penalty shoot-out). We report the score that
+    decided the match (et if it went that far, else ft) plus a winner token in
+    the same HOME_TEAM/AWAY_TEAM/DRAW shape the rest of the code expects.
+    """
+    try:
+        data = _fetch_json(OPENFOOTBALL_URL)
+    except (urllib.error.URLError, urllib.error.HTTPError, ValueError) as e:
+        print(f"openfootball fetch failed ({e}); continuing with existing data.")
+        return []
+    out = []
+    for m in data.get("matches", []):
+        score = m.get("score") or {}
+        result = score.get("et") or score.get("ft")
+        if not (isinstance(result, list) and len(result) == 2
+                and isinstance(result[0], int) and isinstance(result[1], int)):
+            continue  # not played yet, or a malformed entry
+        pens = score.get("p")
+        if (isinstance(pens, list) and len(pens) == 2
+                and isinstance(pens[0], int) and isinstance(pens[1], int)
+                and pens[0] != pens[1]):
+            winner = "HOME_TEAM" if pens[0] > pens[1] else "AWAY_TEAM"
+        elif result[0] > result[1]:
+            winner = "HOME_TEAM"
+        elif result[1] > result[0]:
+            winner = "AWAY_TEAM"
+        else:
+            winner = "DRAW"
+        out.append({
+            "home": m.get("team1"),
+            "away": m.get("team2"),
+            "homeScore": result[0],
+            "awayScore": result[1],
+            "winner": winner,
+            "utcDate": m.get("date"),
+        })
+    print(f"openfootball returned {len(out)} finished matches.")
+    return out
+
+
 def fetch_api_matches():
     """Return list of finished matches from football-data.org, or [] on failure."""
     if not API_TOKEN:
@@ -173,16 +234,18 @@ def apply_results(schedule, results):
     valid = {m["home"] for m in schedule if not m["homePlaceholder"]}
     valid |= {m["away"] for m in schedule if not m["awayPlaceholder"]}
 
-    api = fetch_api_matches()
-    # index API matches by frozenset of the two canonical team names
+    # openfootball is the primary feed; football-data.org only fills gaps when a
+    # token is configured. Listing openfootball first means it wins a tie.
+    api = fetch_openfootball_matches() + fetch_api_matches()
+    # index matches by frozenset of the two canonical team names (first wins)
     api_idx = {}
     for a in api:
         h, w = canon(a["home"], valid), canon(a["away"], valid)
         if h and w:
-            api_idx[frozenset((h, w))] = a
+            api_idx.setdefault(frozenset((h, w)), a)
         else:
             # surface the exact spelling so a missing alias is obvious in logs
-            print(f"Unmapped API match: {a['home']!r} ({h}) vs "
+            print(f"Unmapped feed match: {a['home']!r} ({h}) vs "
                   f"{a['away']!r} ({w}) - add an alias if these are real teams.")
 
     manual = load(MANUAL, {}) or {}
