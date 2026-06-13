@@ -9,9 +9,15 @@ derives the full tournament state - group standings, who qualifies, and the
 knockout bracket - into tracker-state.json, which the website reads to show
 eliminations and how far each team (and therefore each sweepstake entrant) got.
 
-Data source: football-data.org v4 (free tier). Set the FOOTBALL_DATA_API_TOKEN
-secret. A committed manual-results.json ({"<matchNo>": "2-1", ...}) always wins
-over the API, so results can be corrected or entered by hand if the feed is off.
+Primary data source: openfootball (github.com/openfootball/worldcup.json) - free,
+public-domain World Cup JSON served from raw.githubusercontent.com. No API key, no
+rate limits, no bot protection, so it works from any CI runner out of the box.
+
+Optional fallback: football-data.org v4 (free tier). It is only consulted when the
+FOOTBALL_DATA_API_TOKEN secret is set and openfootball is missing a result.
+
+A committed manual-results.json ({"<matchNo>": "2-1", ...}) always wins over every
+feed, so results can be corrected or entered by hand if a source is off.
 
 The script is deliberately fail-soft: any network/parse problem is logged and the
 run still exits 0 with whatever it could update, so a flaky feed never turns the
@@ -21,6 +27,7 @@ import json
 import os
 import re
 import sys
+import unicodedata
 import urllib.request
 import urllib.error
 from datetime import datetime, timezone, timedelta
@@ -35,31 +42,57 @@ API_TOKEN = os.environ.get("FOOTBALL_DATA_API_TOKEN", "").strip()
 API_COMP = os.environ.get("FOOTBALL_DATA_COMPETITION", "WC").strip()
 API_BASE = "https://api.football-data.org/v4"
 
+# Primary feed: openfootball public-domain JSON (no key, no rate limit).
+OPENFOOTBALL_URL = os.environ.get(
+    "OPENFOOTBALL_URL",
+    "https://raw.githubusercontent.com/openfootball/worldcup.json/master/2026/worldcup.json",
+).strip()
+
 # Map provider team names onto the canonical names used in data.js / schedule.json.
-ALIASES = {
+# Keys are raw provider spellings; they are matched after normalisation (see
+# _norm), so accents/punctuation/case don't need to be repeated here - only
+# genuinely different names (e.g. "Czech Republic" -> "Czechia") need listing.
+RAW_ALIASES = {
     "czech republic": "Czechia",
     "korea republic": "South Korea",
-    "south korea": "South Korea",
     "republic of korea": "South Korea",
+    "korea dpr": "South Korea",
     "iran": "IR Iran",
-    "ir iran": "IR Iran",
     "turkey": "Türkiye",
-    "turkiye": "Türkiye",
-    "united states": "United States",
     "usa": "United States",
     "united states of america": "United States",
-    "bosnia & herzegovina": "Bosnia and Herzegovina",
-    "bosnia and herzegovina": "Bosnia and Herzegovina",
-    "ivory coast": "Ivory Coast",
+    "us": "United States",
     "cote d'ivoire": "Ivory Coast",
-    "côte d'ivoire": "Ivory Coast",
-    "cape verde": "Cape Verde",
+    "ivory coast": "Ivory Coast",
     "cabo verde": "Cape Verde",
-    "dr congo": "DR Congo",
     "congo dr": "DR Congo",
-    "curacao": "Curaçao",
-    "curaçao": "Curaçao",
+    "dr congo": "DR Congo",
+    "democratic republic of congo": "DR Congo",
 }
+
+# Connector words that carry no identifying weight when comparing team names,
+# so "Bosnia-Herzegovina" / "Bosnia & Herzegovina" / "Bosnia and Herzegovina"
+# all reduce to the same token set.
+STOPWORDS = {"and", "of", "the"}
+
+
+def _norm(name):
+    """Lower-case, strip accents, and reduce punctuation to spaces."""
+    if not name:
+        return ""
+    s = unicodedata.normalize("NFKD", name)
+    s = "".join(c for c in s if not unicodedata.combining(c))
+    s = s.lower().replace("&", " and ")
+    s = re.sub(r"[^a-z0-9]+", " ", s)
+    return re.sub(r"\s+", " ", s).strip()
+
+
+def _tokens(name):
+    return frozenset(t for t in _norm(name).split() if t not in STOPWORDS)
+
+
+# Alias lookup keyed by normalised spelling.
+ALIASES = {_norm(k): v for k, v in RAW_ALIASES.items()}
 
 
 def now_utc():
@@ -92,16 +125,22 @@ def canon(name, valid):
     """Best-effort map an external team name to a canonical schedule name."""
     if not name:
         return None
-    key = name.strip().lower()
+    key = _norm(name)
     if key in ALIASES:
         return ALIASES[key]
+    # exact match on the normalised spelling, then on the connector-free token
+    # set (so hyphen/"and"/"&"/accent variants all line up)
+    ntok = _tokens(name)
     for v in valid:
-        if v.lower() == key:
+        if _norm(v) == key:
             return v
-    # last resort: substring either direction
     for v in valid:
-        vl = v.lower()
-        if vl in key or key in vl:
+        if _tokens(v) == ntok:
+            return v
+    # last resort: substring either direction on the normalised forms
+    for v in valid:
+        nv = _norm(v)
+        if nv and (nv in key or key in nv):
             return v
     return None
 
@@ -109,6 +148,55 @@ def canon(name, valid):
 # --------------------------------------------------------------------------
 # Fetching final scores
 # --------------------------------------------------------------------------
+def _fetch_json(url, headers=None):
+    req = urllib.request.Request(url, headers=headers or {})
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        return json.loads(resp.read().decode())
+
+
+def fetch_openfootball_matches():
+    """Return finished matches from the openfootball 2026 JSON, or [] on failure.
+
+    openfootball stores scores as score.ft (90'), score.et (after extra time,
+    cumulative) and score.p (penalty shoot-out). We report the score that
+    decided the match (et if it went that far, else ft) plus a winner token in
+    the same HOME_TEAM/AWAY_TEAM/DRAW shape the rest of the code expects.
+    """
+    try:
+        data = _fetch_json(OPENFOOTBALL_URL)
+    except (urllib.error.URLError, urllib.error.HTTPError, ValueError) as e:
+        print(f"openfootball fetch failed ({e}); continuing with existing data.")
+        return []
+    out = []
+    for m in data.get("matches", []):
+        score = m.get("score") or {}
+        result = score.get("et") or score.get("ft")
+        if not (isinstance(result, list) and len(result) == 2
+                and isinstance(result[0], int) and isinstance(result[1], int)):
+            continue  # not played yet, or a malformed entry
+        pens = score.get("p")
+        if (isinstance(pens, list) and len(pens) == 2
+                and isinstance(pens[0], int) and isinstance(pens[1], int)
+                and pens[0] != pens[1]):
+            winner = "HOME_TEAM" if pens[0] > pens[1] else "AWAY_TEAM"
+        elif result[0] > result[1]:
+            winner = "HOME_TEAM"
+        elif result[1] > result[0]:
+            winner = "AWAY_TEAM"
+        else:
+            winner = "DRAW"
+        out.append({
+            "home": m.get("team1"),
+            "away": m.get("team2"),
+            "homeScore": result[0],
+            "awayScore": result[1],
+            "winner": winner,
+            "utcDate": m.get("date"),
+        })
+    print(f"openfootball returned {len(out)} finished matches.")
+    return out
+
+
 def fetch_api_matches():
     """Return list of finished matches from football-data.org, or [] on failure."""
     if not API_TOKEN:
@@ -146,13 +234,19 @@ def apply_results(schedule, results):
     valid = {m["home"] for m in schedule if not m["homePlaceholder"]}
     valid |= {m["away"] for m in schedule if not m["awayPlaceholder"]}
 
-    api = fetch_api_matches()
-    # index API matches by frozenset of the two canonical team names
+    # openfootball is the primary feed; football-data.org only fills gaps when a
+    # token is configured. Listing openfootball first means it wins a tie.
+    api = fetch_openfootball_matches() + fetch_api_matches()
+    # index matches by frozenset of the two canonical team names (first wins)
     api_idx = {}
     for a in api:
         h, w = canon(a["home"], valid), canon(a["away"], valid)
         if h and w:
-            api_idx[frozenset((h, w))] = a
+            api_idx.setdefault(frozenset((h, w)), a)
+        else:
+            # surface the exact spelling so a missing alias is obvious in logs
+            print(f"Unmapped feed match: {a['home']!r} ({h}) vs "
+                  f"{a['away']!r} ({w}) - add an alias if these are real teams.")
 
     manual = load(MANUAL, {}) or {}
     now = now_utc()
@@ -195,6 +289,10 @@ def apply_results(schedule, results):
                 else:
                     _set_result(rec, a["awayScore"], a["homeScore"], a.get("winner"), flip=True)
                 changed += 1
+            else:
+                # due, both teams known, yet no API result landed - worth a note
+                # so a silent mismatch doesn't look like "nothing happened"
+                print(f"No result yet for due match {no}: {home} vs {away}.")
 
     print(f"Updated {changed} match result(s).")
     return changed
