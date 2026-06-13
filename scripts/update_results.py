@@ -21,6 +21,7 @@ import json
 import os
 import re
 import sys
+import unicodedata
 import urllib.request
 import urllib.error
 from datetime import datetime, timezone, timedelta
@@ -36,30 +37,50 @@ API_COMP = os.environ.get("FOOTBALL_DATA_COMPETITION", "WC").strip()
 API_BASE = "https://api.football-data.org/v4"
 
 # Map provider team names onto the canonical names used in data.js / schedule.json.
-ALIASES = {
+# Keys are raw provider spellings; they are matched after normalisation (see
+# _norm), so accents/punctuation/case don't need to be repeated here - only
+# genuinely different names (e.g. "Czech Republic" -> "Czechia") need listing.
+RAW_ALIASES = {
     "czech republic": "Czechia",
     "korea republic": "South Korea",
-    "south korea": "South Korea",
     "republic of korea": "South Korea",
+    "korea dpr": "South Korea",
     "iran": "IR Iran",
-    "ir iran": "IR Iran",
     "turkey": "Türkiye",
-    "turkiye": "Türkiye",
-    "united states": "United States",
     "usa": "United States",
     "united states of america": "United States",
-    "bosnia & herzegovina": "Bosnia and Herzegovina",
-    "bosnia and herzegovina": "Bosnia and Herzegovina",
-    "ivory coast": "Ivory Coast",
+    "us": "United States",
     "cote d'ivoire": "Ivory Coast",
-    "côte d'ivoire": "Ivory Coast",
-    "cape verde": "Cape Verde",
+    "ivory coast": "Ivory Coast",
     "cabo verde": "Cape Verde",
-    "dr congo": "DR Congo",
     "congo dr": "DR Congo",
-    "curacao": "Curaçao",
-    "curaçao": "Curaçao",
+    "dr congo": "DR Congo",
+    "democratic republic of congo": "DR Congo",
 }
+
+# Connector words that carry no identifying weight when comparing team names,
+# so "Bosnia-Herzegovina" / "Bosnia & Herzegovina" / "Bosnia and Herzegovina"
+# all reduce to the same token set.
+STOPWORDS = {"and", "of", "the"}
+
+
+def _norm(name):
+    """Lower-case, strip accents, and reduce punctuation to spaces."""
+    if not name:
+        return ""
+    s = unicodedata.normalize("NFKD", name)
+    s = "".join(c for c in s if not unicodedata.combining(c))
+    s = s.lower().replace("&", " and ")
+    s = re.sub(r"[^a-z0-9]+", " ", s)
+    return re.sub(r"\s+", " ", s).strip()
+
+
+def _tokens(name):
+    return frozenset(t for t in _norm(name).split() if t not in STOPWORDS)
+
+
+# Alias lookup keyed by normalised spelling.
+ALIASES = {_norm(k): v for k, v in RAW_ALIASES.items()}
 
 
 def now_utc():
@@ -92,16 +113,22 @@ def canon(name, valid):
     """Best-effort map an external team name to a canonical schedule name."""
     if not name:
         return None
-    key = name.strip().lower()
+    key = _norm(name)
     if key in ALIASES:
         return ALIASES[key]
+    # exact match on the normalised spelling, then on the connector-free token
+    # set (so hyphen/"and"/"&"/accent variants all line up)
+    ntok = _tokens(name)
     for v in valid:
-        if v.lower() == key:
+        if _norm(v) == key:
             return v
-    # last resort: substring either direction
     for v in valid:
-        vl = v.lower()
-        if vl in key or key in vl:
+        if _tokens(v) == ntok:
+            return v
+    # last resort: substring either direction on the normalised forms
+    for v in valid:
+        nv = _norm(v)
+        if nv and (nv in key or key in nv):
             return v
     return None
 
@@ -153,6 +180,10 @@ def apply_results(schedule, results):
         h, w = canon(a["home"], valid), canon(a["away"], valid)
         if h and w:
             api_idx[frozenset((h, w))] = a
+        else:
+            # surface the exact spelling so a missing alias is obvious in logs
+            print(f"Unmapped API match: {a['home']!r} ({h}) vs "
+                  f"{a['away']!r} ({w}) - add an alias if these are real teams.")
 
     manual = load(MANUAL, {}) or {}
     now = now_utc()
@@ -195,6 +226,10 @@ def apply_results(schedule, results):
                 else:
                     _set_result(rec, a["awayScore"], a["homeScore"], a.get("winner"), flip=True)
                 changed += 1
+            else:
+                # due, both teams known, yet no API result landed - worth a note
+                # so a silent mismatch doesn't look like "nothing happened"
+                print(f"No result yet for due match {no}: {home} vs {away}.")
 
     print(f"Updated {changed} match result(s).")
     return changed
