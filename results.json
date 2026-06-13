@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-06-13T06:32:33Z",
+  "updatedAt": "2026-06-13T06:41:33Z",
   "results": {
     "1": {
       "match": 1,
@@ -34,11 +34,11 @@
       "away": "Bosnia and Herzegovina",
       "homeRef": "Canada",
       "awayRef": "Bosnia and Herzegovina",
-      "homeScore": null,
-      "awayScore": null,
-      "status": "SCHEDULED",
+      "homeScore": 1,
+      "awayScore": 1,
+      "status": "FINISHED",
       "winner": null,
-      "finishedAt": null
+      "finishedAt": "2026-06-13T06:41:33Z"
     },
     "4": {
       "match": 4,
@@ -51,7 +51,7 @@
       "awayScore": 1,
       "status": "FINISHED",
       "winner": "United States",
-      "finishedAt": "2026-06-13T06:32:33Z"
+      "finishedAt": "2026-06-13T06:00:00Z"
     },
     "5": {
       "match": 5,
