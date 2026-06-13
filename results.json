@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-06-13T01:34:32Z",
+  "updatedAt": "2026-06-13T06:32:33Z",
   "results": {
     "1": {
       "match": 1,
@@ -47,11 +47,11 @@
       "away": "Paraguay",
       "homeRef": "United States",
       "awayRef": "Paraguay",
-      "homeScore": null,
-      "awayScore": null,
-      "status": "SCHEDULED",
-      "winner": null,
-      "finishedAt": null
+      "homeScore": 4,
+      "awayScore": 1,
+      "status": "FINISHED",
+      "winner": "United States",
+      "finishedAt": "2026-06-13T06:32:33Z"
     },
     "5": {
       "match": 5,
