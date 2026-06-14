@@ -3,6 +3,13 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: ["main"]
+  # The results updater commits with the automatic GITHUB_TOKEN, and pushes made
+  # with that token deliberately do NOT fire other workflows' `push` triggers.
+  # `workflow_run` is not subject to that rule, so it lets a fresh results commit
+  # actually redeploy the site instead of leaving Pages frozen on the last human push.
+  workflow_run:
+    workflows: ["Update match results"]
+    types: [completed]
   workflow_dispatch:
 
 permissions:
@@ -16,6 +23,8 @@ concurrency:
 
 jobs:
   deploy:
+    # On a workflow_run trigger, only deploy if the results update succeeded.
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
