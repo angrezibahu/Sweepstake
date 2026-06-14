@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-06-13T22:19:11Z",
+  "updatedAt": "2026-06-14T01:37:26Z",
   "results": {
     "1": {
       "match": 1,
@@ -60,11 +60,11 @@
       "away": "Switzerland",
       "homeRef": "Qatar",
       "awayRef": "Switzerland",
-      "homeScore": null,
-      "awayScore": null,
-      "status": "SCHEDULED",
+      "homeScore": 1,
+      "awayScore": 1,
+      "status": "FINISHED",
       "winner": null,
-      "finishedAt": null
+      "finishedAt": "2026-06-14T01:37:26Z"
     },
     "6": {
       "match": 6,
